@@ -26,7 +26,7 @@ System packages:
 This repo is pinned for `uv` on macOS arm64 with Python `3.11`.
 
 ```bash
-git clone <your-new-repo-url>
+git clone https://github.com/ever-oli/song2graph.git
 cd song2graph
 uv sync --frozen
 ```
