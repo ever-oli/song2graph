@@ -1134,8 +1134,8 @@ def main():
 
     args = parser.parse_args()
 
-    if (args.annotate is not None or args.ingest_annotate) and os.getenv("OPENAI_API_KEY") is None:
-        parser.error("OPENAI_API_KEY is required for --annotate and --ingest-annotate.")
+    if (args.annotate is not None or args.ingest_annotate) and os.getenv("OPENROUTER_API_KEY") is None:
+        parser.error("OPENROUTER_API_KEY is required for --annotate and --ingest-annotate.")
 
     # List of videos to use
     if args.videos is not None:

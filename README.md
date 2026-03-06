@@ -90,7 +90,7 @@ This runs:
 ### LLM annotation
 
 ```bash
-OPENAI_API_KEY=... python song2graph.py --annotate all --annotate-model gpt-4.1-mini
+OPENROUTER_API_KEY=... python song2graph.py --annotate all --annotate-model openai/gpt-4.1-mini
 ```
 
 ### MusicFlamingo notebooks
