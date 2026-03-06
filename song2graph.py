@@ -17,7 +17,6 @@ from numba import cuda
 import numpy as np 
 import librosa
 import soundfile as sf
-import pyrubberband as pyrb
 import torch
 import torchcrepe
 from yt_dlp import YoutubeDL
@@ -900,6 +899,13 @@ def extractMIDI(audio_paths, output_dir):
 
 
 def quantizeAudio(vid, bpm=120, keepOriginalBpm = False, pitchShiftFirst = False, extractMidi = False):
+    try:
+        import pyrubberband as pyrb
+    except ImportError as exc:
+        raise RuntimeError(
+            "Quantization requires the optional 'quantization' dependencies. Run `uv sync --frozen --extra quantization`."
+        ) from exc
+
     tempo_value = float(scalarize(vid.audio_features["tempo"]))
     source_audio_file = resolve_audio_file(vid)
     print("Quantize Audio: Target BPM", bpm, 

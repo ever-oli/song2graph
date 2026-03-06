@@ -9,7 +9,7 @@ Song2Graph is a music structure extraction, retrieval, and reasoning pipeline. I
 - Pitch tracking and key estimation: [TorchCrepe](https://github.com/maxrmorrison/torchcrepe)
 - Audio-to-MIDI baseline: [Basic Pitch](https://github.com/spotify/basic-pitch) via ONNX runtime
 - Optional research MIDI backend: [MT3](https://github.com/magenta/mt3) via `mt3-infer`
-- Quantization and alignment: [pyrubberband](https://github.com/bmcfee/pyrubberband)
+- Quantization and alignment: [pyrubberband](https://github.com/bmcfee/pyrubberband) (optional `quantization` extra)
 - Music/audio features: [librosa](https://github.com/librosa/librosa)
 - Retrieval embeddings: [LAION-CLAP](https://github.com/LAION-AI/CLAP)
 - Transcription: [faster-whisper](https://github.com/SYSTRAN/faster-whisper)
@@ -38,6 +38,8 @@ Extras:
 uv sync --frozen --extra retrieval --extra transcription --extra notebook
 # optional MT3 backend
 uv sync --frozen --extra mt3
+# optional quantization backend
+uv sync --frozen --extra quantization
 ```
 
 These extras enable:
@@ -46,6 +48,7 @@ These extras enable:
 - `transcription`: `faster-whisper` lyrics transcription
 - `notebook`: `marimo` notebooks
 - `mt3`: optional MT3 MIDI transcription backend
+- `quantization`: optional `pyrubberband` time-stretch backend
 
 ## Run Song2Graph
 
