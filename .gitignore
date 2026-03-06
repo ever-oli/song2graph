@@ -1,0 +1,10 @@
+input/
+library/
+processed/
+separated/
+.cache/
+.mplconfig/
+.venv/
+__pycache__/
+tmp_midi/
+vendor/
