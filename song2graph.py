@@ -21,10 +21,6 @@ import torch
 import torchcrepe
 from yt_dlp import YoutubeDL
 from sf_segmenter.segmenter import Segmenter
-from basic_pitch import ICASSP_2022_MODEL_PATH, CT_PRESENT, TFLITE_PRESENT, ONNX_PRESENT, TF_PRESENT
-from basic_pitch import FilenameSuffix, build_icassp_2022_model_path
-from basic_pitch.inference import predict_and_save
-from basic_pitch.inference import predict
 from clap_handler import ClapIndexer, format_results, index_exists, load_index, save_index, search_by_embedding
 from annotation_handler import annotate_document
 from transcription_handler import (
@@ -52,16 +48,6 @@ class Video:
 ### Library
 
 LIBRARY_FILENAME = "library/database.p"
-basic_pitch_model = ""
-
-if TFLITE_PRESENT or TF_PRESENT:
-    basic_pitch_model = build_icassp_2022_model_path(FilenameSuffix.tflite)
-elif ONNX_PRESENT:
-    basic_pitch_model = build_icassp_2022_model_path(FilenameSuffix.onnx)
-elif CT_PRESENT:
-    basic_pitch_model = build_icassp_2022_model_path(FilenameSuffix.coreml)
-else:
-    basic_pitch_model = ICASSP_2022_MODEL_PATH
 
 def write_library(videos):
     with open(LIBRARY_FILENAME, "wb") as lib:
@@ -393,7 +379,7 @@ def ensure_midi_outputs(audio_paths, output_dir):
     expected_midi = [
         os.path.join(
             output_dir,
-            os.path.splitext(os.path.basename(path))[0] + "_basic_pitch.mid",
+            os.path.splitext(os.path.basename(path))[0] + "_mt3.mid",
         )
         for path in audio_paths
     ]
@@ -589,7 +575,7 @@ def collect_reference_paths(file_id):
     feature_cache = os.path.join(os.getcwd(), 'library', f'{file_id}.a')
     stem_dir, stem_paths = get_stem_paths(file_id, 'htdemucs_6s')
     midi_paths = [
-        os.path.splitext(path)[0] + "_basic_pitch.mid"
+        os.path.splitext(path)[0] + "_mt3.mid"
         for path in stem_paths
     ]
     return {
@@ -883,19 +869,27 @@ def stemsplit(destination, demucsmodel):
     )  # '--mp3'
 
 def extractMIDI(audio_paths, output_dir):
-    print('- Extract Midi')
-    save_midi = True
-    sonify_midi = False
-    save_model_outputs = False
-    save_notes = False
+    try:
+        import librosa
+        from mt3_infer import transcribe
+    except ImportError as exc:
+        raise RuntimeError(
+            "MT3 MIDI export is not installed. Install the optional dependency with `uv sync --frozen --extra mt3`."
+        ) from exc
 
-    predict_and_save(audio_path_list=audio_paths, 
-                  output_directory=output_dir, 
-                  save_midi=save_midi, 
-                  sonify_midi=sonify_midi, 
-                  save_model_outputs=save_model_outputs, 
-                  save_notes=save_notes,
-                  model_or_model_path=basic_pitch_model)
+    print('- Extract Midi (MT3)')
+    os.makedirs(output_dir, exist_ok=True)
+    midi_paths = []
+    for audio_path in audio_paths:
+        audio, _ = librosa.load(audio_path, sr=16000, mono=True)
+        midi = transcribe(audio, sr=16000, model="mr_mt3")
+        midi_path = os.path.join(
+            output_dir,
+            os.path.splitext(os.path.basename(audio_path))[0] + "_mt3.mid",
+        )
+        midi.save(midi_path)
+        midi_paths.append(midi_path)
+    return midi_paths
 
 
 def quantizeAudio(vid, bpm=120, keepOriginalBpm = False, pitchShiftFirst = False, extractMidi = False):

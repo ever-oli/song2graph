@@ -7,8 +7,7 @@ Song2Graph is a music structure extraction, retrieval, and reasoning pipeline. I
 - Stem separation: [Demucs](https://github.com/facebookresearch/demucs)
 - Structure segmentation: [sf_segmenter](https://github.com/wayne391/sf_segmenter)
 - Pitch tracking and key estimation: [TorchCrepe](https://github.com/maxrmorrison/torchcrepe)
-- Audio-to-MIDI baseline: [Basic Pitch](https://github.com/spotify/basic-pitch) via ONNX runtime
-- Optional research MIDI backend: [MT3](https://github.com/magenta/mt3) via `mt3-infer`
+- MIDI backend: [MT3](https://github.com/magenta/mt3) via `mt3-infer`
 - Quantization and alignment: [pyrubberband](https://github.com/bmcfee/pyrubberband) (optional `quantization` extra)
 - Music/audio features: [librosa](https://github.com/librosa/librosa)
 - Retrieval embeddings: [LAION-CLAP](https://github.com/LAION-AI/CLAP)

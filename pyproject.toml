@@ -5,12 +5,10 @@ description = "Music structure extraction, retrieval, and reasoning pipeline wit
 readme = "README.md"
 requires-python = ">=3.11,<3.12"
 dependencies = [
-  "basic-pitch==0.4.0",
   "torchcrepe==0.0.24",
   "demucs==4.0.0",
   "librosa==0.11.0",
   "matplotlib==3.10.8",
-  "onnxruntime==1.23.1",
   "sf_segmenter==0.0.2",
   "soundfile==0.13.1",
   "setuptools==80.9.0",
