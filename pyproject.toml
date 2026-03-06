@@ -6,15 +6,15 @@ readme = "README.md"
 requires-python = ">=3.11,<3.12"
 dependencies = [
   "basic-pitch==0.4.0",
-  "crepe==0.0.16",
+  "torchcrepe==0.0.24",
   "demucs==4.0.0",
   "librosa==0.11.0",
   "matplotlib==3.10.8",
+  "onnxruntime==1.23.1",
   "pyrubberband==0.3.0",
   "sf_segmenter==0.0.2",
   "soundfile==0.13.1",
   "setuptools==80.9.0",
-  "tensorflow==2.20.0; sys_platform == 'darwin'",
   "torch==2.10.0",
   "torchaudio==2.10.0",
   "torchcodec==0.10.0",
@@ -32,6 +32,9 @@ transcription = [
 notebook = [
   "marimo",
 ]
+mt3 = [
+  "mt3-infer==0.1.3",
+]
 
 [build-system]
 requires = ["hatchling"]
@@ -41,5 +44,3 @@ build-backend = "hatchling.build"
 package = false
 environments = ["sys_platform == 'darwin' and platform_machine == 'arm64'"]
 
-[tool.uv.sources]
-crepe = { url = "https://github.com/ever-oli/song2graph/releases/download/v0.1.0/crepe-0.0.16-py3-none-any.whl" }

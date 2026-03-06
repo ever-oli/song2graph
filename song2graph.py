@@ -18,6 +18,8 @@ import numpy as np
 import librosa
 import soundfile as sf
 import pyrubberband as pyrb
+import torch
+import torchcrepe
 from yt_dlp import YoutubeDL
 from sf_segmenter.segmenter import Segmenter
 from basic_pitch import ICASSP_2022_MODEL_PATH, CT_PRESENT, TFLITE_PRESENT, ONNX_PRESENT, TF_PRESENT
@@ -32,11 +34,6 @@ from transcription_handler import (
     normalize_transcription_payload,
     write_transcription_json,
 )
-
-try:
-    import crepe
-except ImportError:
-    crepe = None
 
 ##########################################
 ############### SONG2GRAPH ###############
@@ -60,10 +57,10 @@ basic_pitch_model = ""
 
 if TFLITE_PRESENT or TF_PRESENT:
     basic_pitch_model = build_icassp_2022_model_path(FilenameSuffix.tflite)
-elif CT_PRESENT:
-    basic_pitch_model = build_icassp_2022_model_path(FilenameSuffix.coreml)
 elif ONNX_PRESENT:
     basic_pitch_model = build_icassp_2022_model_path(FilenameSuffix.onnx)
+elif CT_PRESENT:
+    basic_pitch_model = build_icassp_2022_model_path(FilenameSuffix.coreml)
 else:
     basic_pitch_model = ICASSP_2022_MODEL_PATH
 
@@ -357,16 +354,23 @@ def scalarize(value):
 
 
 def resolve_audio_file(vid):
-    # Audio files imported from disk use their local library copy; downloaded
-    # videos also land in library/<id>.wav after ffmpeg extraction.
-    if len(vid.id) > 12:
-        if isinstance(vid.audio, str) and vid.audio:
-            return vid.audio
-        if isinstance(vid.url, str) and vid.url.endswith(".mp3"):
-            return os.path.join(os.getcwd(), 'library', vid.id + '.wav')
-        if isinstance(vid.url, str) and vid.url.endswith(".wav"):
-            return vid.url
-    return os.path.join(os.getcwd(), 'library', vid.id + '.wav')
+    # Prefer the canonical local library copy so repo moves or renames do not
+    # break previously indexed absolute paths.
+    canonical_path = os.path.join(os.getcwd(), 'library', vid.id + '.wav')
+    if os.path.isfile(canonical_path):
+        return canonical_path
+
+    candidates = []
+    if isinstance(vid.audio, str) and vid.audio:
+        candidates.append(vid.audio)
+    if isinstance(vid.url, str) and vid.url.endswith((".wav", ".mp3")):
+        candidates.append(vid.url)
+
+    for candidate in candidates:
+        if os.path.isfile(candidate):
+            return candidate
+
+    return canonical_path
 
 
 def get_stem_output_dir(file_id, demucsmodel="htdemucs_6s"):
@@ -405,7 +409,7 @@ def should_refresh_audio_features(audio_features):
         return True
     if hasattr(frequency_frames, "__len__") and len(frequency_frames) == 0:
         return True
-    if audio_features.get("pitch_backend") != "crepe":
+    if audio_features.get("pitch_backend") != "torchcrepe":
         return True
     return False
 
@@ -838,21 +842,37 @@ def ingest_assets(videos, selected_ids, transcribe=False, transcription_model="s
 
 
 def get_pitch_dnn(audio_file):
-    if crepe is None:
-        raise RuntimeError(
-            "Crepe is not installed. Install it in the Song2Graph environment to enable pitch tracking."
+    sample_rate = 16000
+    hop_length = 160
+    audio, sr = librosa.load(audio_file, sr=sample_rate, mono=True)
+    if audio.size == 0:
+        return []
+
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    audio_tensor = torch.tensor(audio, dtype=torch.float32, device=device).unsqueeze(0)
+
+    with torch.inference_mode():
+        frequency, confidence = torchcrepe.predict(
+            audio_tensor,
+            sample_rate,
+            hop_length,
+            fmin=32.7,
+            fmax=1975.5,
+            model="tiny",
+            batch_size=512,
+            device=device,
+            return_periodicity=True,
         )
 
-    audio, sr = librosa.load(audio_file, sr=16000, mono=True)
-    time, frequency, confidence, _ = crepe.predict(
-        audio,
-        sr,
-        viterbi=True,
-        step_size=10,
-        model_capacity="small",
-        verbose=0,
-    )
-    return np.column_stack([time, frequency, confidence]).tolist()
+    frequency = frequency.squeeze(0).detach().cpu().numpy()
+    confidence = confidence.squeeze(0).detach().cpu().numpy()
+    timestamps = np.arange(frequency.shape[0], dtype=np.float32) * (hop_length / sample_rate)
+
+    valid = np.isfinite(frequency) & np.isfinite(confidence) & (frequency > 0)
+    if not np.any(valid):
+        return []
+
+    return np.column_stack([timestamps[valid], frequency[valid], confidence[valid]]).tolist()
 
 def stemsplit(destination, demucsmodel):
     out_dir = os.path.join(os.getcwd(), 'separated')
@@ -893,7 +913,7 @@ def quantizeAudio(vid, bpm=120, keepOriginalBpm = False, pitchShiftFirst = False
         )
 
     # load audio file
-    y, sr = librosa.load(vid.audio, sr=None)
+    y, sr = librosa.load(source_audio_file, sr=None)
 
     # Keep Original Song BPM
     if keepOriginalBpm:
@@ -1043,7 +1063,7 @@ def get_audio_features(file,file_id,extractMidi = False):
         "frequency_frames":frequency_frames,
         "frequency":average_frequency,
         "key":average_key,
-        "pitch_backend":"crepe",
+        "pitch_backend":"torchcrepe",
     }
     return audio_features
 
@@ -1209,7 +1229,7 @@ def main():
                 audio_features = pickle.load(f)
             if should_refresh_audio_features(audio_features):
                 file = resolve_audio_file(vid)
-                print('refresh audio features', vid.id, 'using crepe')
+                print('refresh audio features', vid.id, 'using torchcrepe')
                 audio_features = get_audio_features(file=file, file_id=vid.id, extractMidi=extractmidi)
                 with open(feature_file, "wb") as f:
                     pickle.dump(audio_features, f)
